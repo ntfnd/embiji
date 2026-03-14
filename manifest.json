@@ -1,0 +1,39 @@
+{
+  "name": "Embiji - Money to MBG Converter",
+  "description": "Convert Indonesian Rupiah to MBG time units (1.2T = 1 day). Unofficial - not affiliated with any government agency.",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "action": {
+    "default_title": "MBG Price Converter",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "64": "assets/icons/icon64.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "64": "assets/icons/icon64.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ]
+}

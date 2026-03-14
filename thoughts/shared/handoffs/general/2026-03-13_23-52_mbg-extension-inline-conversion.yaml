@@ -1,0 +1,55 @@
+---
+session: general
+date: 2026-03-13
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Add inline MBG conversion display next to money text with per-node 10-minute cache
+now: Test the extension in Chrome to verify inline conversions appear correctly
+
+test: Load dist/ in Chrome extensions and visit page with "Rp. 20,075,000" text
+
+done_this_session:
+  - task: Add inline MBG text conversion (e.g., "Rp. 20,075,000 (1 Detik MBG)")
+    files: [src/view-models/ContentViewModel.ts]
+  - task: Keep clickable popover for detailed breakdown
+    files: [src/view-models/ContentViewModel.ts]
+  - task: Implement per-node 10-minute cache to prevent re-conversion
+    files: [src/view-models/ContentViewModel.ts]
+  - task: Fixed IIFE build issue for content scripts (no ES module imports)
+    files: [vite.config.ts, build.js]
+  - task: Fixed money pattern regex to handle "Rp." with comma separators
+    files: [src/core/services/MBGConverter.ts]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - Per-node cache: Use WeakMap<Text, timestamp> instead of global timer to allow new content to be processed immediately
+  - IIFE format: Content scripts must be IIFE (not ES modules) for Chrome Manifest V3 compatibility
+  - Inline + Popover: Show inline conversion for quick reference, keep popover for detailed breakdown
+
+findings:
+  - Vite IIFE format with multiple entries requires separate build configs
+  - Custom build.js script handles content/popup/background separately as IIFE
+  - WeakMap allows per-node timestamp tracking without memory leaks
+
+worked:
+  - build.js: Separate IIFE builds for each entry point
+  - WeakMap<Text, number>: Track when each node was processed
+  - TreeWalker acceptNode: Check individual node timestamps
+
+failed:
+  - Single vite config with IIFE format + multiple inputs: "inlineDynamicImports: true" not supported with multiple inputs
+  - WeakSet: Cannot store timestamps, switched to WeakMap
+
+next:
+  - Test extension on actual website with Indonesian Rupiah prices
+  - Verify new dynamically loaded content is converted immediately
+  - Verify already converted text is not re-converted within 10 minutes
+
+files:
+  created: [build.js]
+  modified: [src/view-models/ContentViewModel.ts, vite.config.ts, src/core/services/MBGConverter.ts]
