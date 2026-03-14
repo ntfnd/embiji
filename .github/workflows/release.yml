@@ -1,0 +1,57 @@
+name: Build and Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*.*'  # Trigger on version tags like v1.0.0, v1.1.0, etc.
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create release zip
+        run: |
+          VERSION="${{steps.get_version.outputs.VERSION}}"
+          ZIP_NAME="embiji-mbg-converter-${VERSION}.zip"
+
+          # Create zip from dist/ folder (contains all necessary files)
+          # Build script already copies: manifest.json, popup.html, assets/ to dist/
+          cd dist && zip -r "../$ZIP_NAME" .
+          cd ..
+
+          echo "Created $ZIP_NAME"
+          ls -lh "$ZIP_NAME"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: embiji-mbg-converter-*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
