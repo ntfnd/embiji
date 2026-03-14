@@ -128,19 +128,22 @@ export class MBGConverter {
 
     // Pattern 1: Rp format with dots/commas as thousand separators, with optional word unit
     // Rp 1.000.000.000, Rp 20,075,000, Rp. 20.075.000, Rp.500.000, Rp175 Triliun, etc.
+    // Also handles trailing punctuation like "Rp23.749.000." or "Rp 100.000,"
     const rpPatterns = [
-      // Match Rp + number + optional word unit (j|juta|m|miliar|t|triliun)
-      /Rp\.?\s*([\d\.\,]+)(?:\s*(?:j|juta|m|miliar|t|triliun))?\b/gi,
+      // Match Rp + number + optional word unit + optional trailing punctuation
+      /Rp\.?\s*([\d\.\,]+)(?:\s*(?:j|juta|m|miliar|t|triliun))?(?:([.,;:?!])|\b)/gi,
     ];
 
     for (const pattern of rpPatterns) {
       let match;
       while ((match = pattern.exec(text)) !== null) {
-        const amount = this.parseMoneyText(match[0]);
+        // Get the matched text without trailing punctuation for parsing
+        const textToParse = match[0].replace(/[.,;:?!]$/, '');
+        const amount = this.parseMoneyText(textToParse);
         if (amount !== null && amount > 0) {
           matches.push({
             amount,
-            originalText: match[0],
+            originalText: match[0],  // Include trailing punctuation in display
             startIndex: match.index,
             endIndex: match.index + match[0].length
           });
@@ -149,22 +152,36 @@ export class MBGConverter {
     }
 
     // Pattern 2: Word format (ribu, juta, miliar, triliun) with abbreviations (r, j, m, t)
+    // Pattern 3: Plain numbers with dots as thousand separators (Indonesian format: 295.000, 1.000.000)
     // Only process if requireRpPrefix is false
     if (!this.config.requireRpPrefix) {
       // Important: longer matches must come first in alternation (juta before j)
-      // Word boundary \b prevents matching "t" from words like "tengah"
+      // Handle trailing punctuation like "23 juta." or "100 ribu,"
       const wordPatterns = [
-        /([\d\,\.]+)\s*(ribu|r|juta|j|miliar|m|triliun|t)(an)?\b/gi,
+        /([\d\,\.]+)\s*(ribu|r|juta|j|miliar|m|triliun|t)(an)?(?:([.,;:?!])|\b)/gi,
+        // Pattern for plain numbers with dots as thousand separators (Indonesian format)
+        // Matches: 295.000, 1.000.000, 12.345.678 but NOT 192.168.1.1 (IP - 4 groups) or single decimals
+        // Max 2-3 groups (ribu to miliar range), each group exactly 3 digits
+        /(\d{1,3}(?:\.\d{3}){1,2})(?!\.\d)/gi,
       ];
 
       for (const pattern of wordPatterns) {
         let match;
         while ((match = pattern.exec(text)) !== null) {
-          const amount = this.parseMoneyText(match[0]);
+          // Get the matched text without trailing punctuation for parsing
+          let textToParse = match[0].replace(/[.,;:?!]$/, '');
+
+          // For plain number pattern (no unit), add 'ribu' for parsing
+          // e.g., "295.000" → parse as "295.000 ribu" = 295000
+          if (!textToParse.match(/ribu|juta|miliar|triliun/i)) {
+            textToParse = textToParse + ' ribu';
+          }
+
+          const amount = this.parseMoneyText(textToParse);
           if (amount !== null && amount > 0) {
             matches.push({
               amount,
-              originalText: match[0],
+              originalText: match[0],  // Include trailing punctuation in display
               startIndex: match.index,
               endIndex: match.index + match[0].length
             });
@@ -174,10 +191,25 @@ export class MBGConverter {
     }
 
     // Remove duplicates and sort by position
-    const unique = Array.from(
-      new Map(matches.map(m => [`${m.startIndex}-${m.endIndex}`, m])).values()
-    );
-    unique.sort((a, b) => a.startIndex - b.startIndex);
+    // First sort by startIndex (ascending) and by length descending (prefer longer matches)
+    matches.sort((a, b) => {
+      if (a.startIndex !== b.startIndex) {
+        return a.startIndex - b.startIndex;
+      }
+      // Same start position, prefer longer match (e.g., "Rp 100.000" over "100.000")
+      return b.endIndex - a.endIndex;
+    });
+
+    // Filter out matches that are contained within larger matches
+    const unique: MoneyMatch[] = [];
+    for (const match of matches) {
+      const isContained = unique.some(existing =>
+        match.startIndex >= existing.startIndex && match.endIndex <= existing.endIndex
+      );
+      if (!isContained) {
+        unique.push(match);
+      }
+    }
 
     return unique;
   }

@@ -84,8 +84,8 @@ export class ContentViewModel {
 
   /**
    * VIEWMODEL: Process text nodes for MBG conversion
-   * NOTE: Only processes text nodes with valid money patterns
-   * NOTE: Skips interactive elements to avoid interfering with page functionality
+   * NOTE: Processes text nodes with valid money patterns, including inside buttons/clickable elements
+   * NOTE: Only skips script, style, noscript and already converted elements
    */
   private processMBG(): void {
     console.log('[MBG DEBUG] processMBG started');
@@ -97,21 +97,21 @@ export class ContentViewModel {
           if (this.convertedTextNodes.has(node as Text)) {
             return NodeFilter.FILTER_REJECT;
           }
+          // Only skip our own elements and non-content elements
           if (node.parentElement?.closest('.mbg-marker, .mbg-inline, .mbg-popover, script, style, noscript')) {
             return NodeFilter.FILTER_REJECT;
           }
-          const parent = node.parentElement;
-          if (parent?.closest('button, a, [role="button"], input, select, textarea, nav, header, footer, img, video, iframe')) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          if (parent?.closest('[data-testid="button"]')) {
+          // Still skip input/select/textarea values to avoid breaking form elements
+          if (node.parentElement?.closest('input, select, textarea')) {
             return NodeFilter.FILTER_REJECT;
           }
           const text = node.textContent || '';
-          if (text.length < 3) {
+          if (text.length < 2) {
             return NodeFilter.FILTER_REJECT;
           }
-          const hasMoney = /(?:Rp\s*[\d\.\,]+|[\d\.\,]+\s*(juta|miliar|triliun|ribu)|juta|miliar|triliun)/i.test(text);
+          // Updated regex to include plain numbers with dots as thousand separators (Indonesian format)
+          // e.g., "295.000", "1.000.000" which are typical price formats
+          const hasMoney = /(?:Rp\s*[\d\.\,]+|[\d\.\,]+\s*(juta|miliar|triliun|ribu)|juta|miliar|triliun|\d{1,3}(?:\.\d{3}){1,})/i.test(text);
           if (hasMoney) {
             DEBUG_MODE && console.log('[MBG DEBUG] Found potential money text:', text);
             return NodeFilter.FILTER_ACCEPT;
@@ -157,6 +157,10 @@ export class ContentViewModel {
 
     this.convertedTextNodes.add(textNode);
 
+    // Check if this text node is inside a clickable element
+    const parentElement = textNode.parentElement;
+    const isInsideClickable = !!parentElement?.closest('button, a, [role="button"], [data-testid="button"]');
+
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
 
@@ -171,17 +175,18 @@ export class ContentViewModel {
         fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.startIndex)));
       }
 
-      const span = document.createElement('span');
-      span.className = 'mbg-marker';
-      span.dataset.amount = match.amount.toString();
-      span.dataset.original = match.originalText;
-      span.textContent = match.originalText;
-      span.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.showMBGPopover(span, match.amount);
-      });
+      // Create wrapper for clickable area (includes both original text and inline MBG)
+      const wrapper = document.createElement('span');
+      wrapper.className = 'mbg-marker';
+      wrapper.dataset.amount = match.amount.toString();
+      wrapper.dataset.original = match.originalText;
 
+      // Original money text
+      const textSpan = document.createElement('span');
+      textSpan.className = 'mbg-original';
+      textSpan.textContent = match.originalText;
+
+      // Inline MBG text
       const conversion = this.mbgConverter.convertToMBG(match.amount);
       const mbgText = this.getInlineMBGText(conversion);
 
@@ -189,8 +194,24 @@ export class ContentViewModel {
       mbgSpan.className = 'mbg-inline';
       mbgSpan.textContent = ` (${mbgText})`;
 
-      fragment.appendChild(span);
-      fragment.appendChild(mbgSpan);
+      // Add click handler to wrapper
+      wrapper.addEventListener('click', (e) => {
+        if (isInsideClickable) {
+          // Inside button: show popover but don't prevent button action
+          this.showMBGPopover(wrapper, match.amount);
+        } else {
+          // Not inside button: show popover and prevent default
+          e.preventDefault();
+          e.stopPropagation();
+          this.showMBGPopover(wrapper, match.amount);
+        }
+      });
+
+      // Append both spans to wrapper
+      wrapper.appendChild(textSpan);
+      wrapper.appendChild(mbgSpan);
+
+      fragment.appendChild(wrapper);
       lastIndex = match.endIndex;
     }
 
@@ -413,16 +434,22 @@ export class ContentViewModel {
         cursor: pointer;
         border-bottom: 1.5px solid #FFD700;
         transition: background 0.2s;
+        display: inline;
       }
 
       .mbg-marker:hover {
         background: rgba(255, 215, 0, 0.15);
       }
 
+      .mbg-original {
+        display: inline;
+      }
+
       .mbg-inline {
         color: #667eea;
         font-weight: bold;
         font-size: 0.9em;
+        display: inline;
       }
 
       .mbg-popover {
