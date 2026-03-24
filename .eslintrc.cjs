@@ -12,6 +12,13 @@ module.exports = {
     project: './tsconfig.json'
   },
   rules: {
+    // No semicolons
+    semi: 'off',
+    '@typescript-eslint/semi': ['error', 'never'],
+    // 4 spaces indentation - only TS version
+    indent: 'off',
+    '@typescript-eslint/indent': ['error', 4],
+    // Other rules
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
