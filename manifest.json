@@ -32,8 +32,6 @@
     "service_worker": "dist/background.js"
   },
   "permissions": [
-    "tabs",
-    "scripting",
     "storage"
   ]
 }
