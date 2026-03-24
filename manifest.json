@@ -32,6 +32,7 @@
     "service_worker": "dist/background.js"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab"
   ]
 }
