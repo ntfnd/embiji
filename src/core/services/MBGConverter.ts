@@ -23,8 +23,8 @@ export interface MBGConversion {
 }
 
 export class MBGConverter {
-    private readonly TRILIUN_PER_HARI_MBG = 1.2
-    private readonly TRILIUN_IN_RUPIAH = 1_200_000_000_000
+    /** IDR per one MBG day: 1.2 x 10^12. Parsed word "triliun" = 10^12 IDR. */
+    private readonly RUPIAH_PER_SATU_HARI_MBG = 1_200_000_000_000
     private readonly config: MBGConverterConfig
 
     constructor(config: MBGConverterConfig = {}) {
@@ -157,8 +157,7 @@ export class MBGConverter {
     }
 
     convertToMBG(amount: number): MBGConversion {
-        const triliun = amount / this.TRILIUN_IN_RUPIAH
-        const hariMBG = triliun / this.TRILIUN_PER_HARI_MBG
+        const hariMBG: number = amount / this.RUPIAH_PER_SATU_HARI_MBG
 
         return {
             amount,

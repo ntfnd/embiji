@@ -1,10 +1,10 @@
 # Embiji - Money to MBG Price Converter Chrome Extension
 
-> **DISCLAIMER**: This project is a personal experiment for educational and calculation purposes only. It is **NOT officially affiliated** with Badan Gizi Nasional (National Food and Nutrition Agency of Indonesia) or the government's Makan Bergizi Gratis (MBG) program. The conversion rate (1.2 Triliun = 1 Hari MBG) is based on publicly available information and may not reflect actual program rates. This tool does not represent any government institution or official program.
+> **DISCLAIMER**: This project is a personal experiment for educational and calculation purposes only. It is **NOT officially affiliated** with Badan Gizi Nasional (National Food and Nutrition Agency of Indonesia) or the government's Makan Bergizi Gratis (MBG) program. The conversion uses **1.2 x 10^12 Indonesian Rupiah per one MBG day**; amounts written with the word *triliun* are interpreted as **that number times 10^12** Rupiah. This is based on publicly available information and may not reflect actual program rates. This tool does not represent any government institution or official program.
 
 Chrome extension to convert Indonesian Rupiah money amounts to MBG (Makan Bergizi Gratis) time units.
 
-**1.2 Triliun = 1 Hari MBG**
+**1.2 x 10^12 Rupiah = 1 Hari MBG** (nominal *triliun* = 10^12 Rupiah)
 
 ## Features
 
@@ -183,9 +183,10 @@ For faster iteration during development:
 
 Edit `src/core/services/MBGConverter.ts`:
 ```typescript
-private readonly TRILIUN_PER_HARI_MBG = 1.2;  // Change this value
-private readonly TRILIUN_IN_RUPIAH = 1_200_000_000_000;
+private readonly RUPIAH_PER_SATU_HARI_MBG = 1_200_000_000_000; // IDR per one MBG day (1.2 x 10^12)
 ```
+
+The nominal multiplier for the word *triliun* is `MoneyMultiplier.TRILIUN` in `src/common/constants/money/multipliers.ts` (10^12).
 
 ### Customizing Popover Styles
 

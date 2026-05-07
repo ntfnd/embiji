@@ -30,11 +30,25 @@
         linear-gradient(160deg, oklch(0.9 0.03 84 / 0.35) 0%, transparent 56%);
       background-size: 14px 14px, 100% 100%;
     }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-block: 16px;
+    }
+    .popup-header-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
     h1 {
       font-size: 18px;
       margin: 0 0 4px 0;
       color: var(--ink-strong);
       letter-spacing: 0.02em;
+      flex: 1;
+      min-width: 0;
     }
     h1::after {
       content: '';
@@ -161,11 +175,20 @@
   </style>
 </head>
 <body>
-  <h1 id="title">MBG Price Converter</h1>
-  <div class="subtitle">Makan Bergizi Gratis</div>
+  <header class="popup-header">
+    <img
+      class="popup-header-logo"
+      src="assets/images/logo512.png"
+      alt=""
+      width="48"
+      height="48"
+      decoding="async"
+    >
+    <h1 id="title">MBG Price Converter</h1>
+  </header>
   <div id="status" class="status enabled">Enabled</div>
   <div class="conversion-info">
-    <strong>Konversi:</strong> 1,2 Triliun = 1 Hari MBG
+    <strong>Konversi:</strong> 1,2 × 10^12 Rupiah = 1 Hari MBG (nominal "triliun" = 10^12)
   </div>
 
   <div class="settings-section">

@@ -5,6 +5,6 @@ export enum MoneyMultiplier {
     JUTAAN = 1_000_001, // Different value to avoid duplicate
     MILIAR = 1_000_000_000,
     MILIARAN = 1_000_000_001, // Different value to avoid duplicate
-    TRILIUN = 1_200_000_000_000,
-    TRILIUNAN = 1_200_000_000_001 // Different value to avoid duplicate
+    TRILIUN = 1_000_000_000_000,
+    TRILIUNAN = 1_000_000_000_001 // Different value to avoid duplicate
 }

@@ -21,9 +21,9 @@ describe('MBGConverter', () => {
         expect(converter.parseMoneyText('Rp.20.075.000')).toBe(20075000);
       });
 
-      it('should parse "Rp175 Triliun" as 210000000000000', () => {
-        // 175 * TRILIUN (1.2T)
-        expect(converter.parseMoneyText('Rp175 Triliun')).toBe(175 * 1_200_000_000_000);
+      it('should parse "Rp175 Triliun" as 175000000000000', () => {
+        // 175 × 10^12 IDR (satu triliun = 1.000.000.000.000)
+        expect(converter.parseMoneyText('Rp175 Triliun')).toBe(175 * 1_000_000_000_000);
       });
 
       it('should parse "Rp 500" as 500', () => {
@@ -61,8 +61,8 @@ describe('MBGConverter', () => {
         expect(converter.parseMoneyText('1.5 miliar')).toBe(1.5 * 1_000_000_000);
       });
 
-      it('should parse "2 triliun" as 2400000000000', () => {
-        expect(converter.parseMoneyText('2 triliun')).toBe(2 * 1_200_000_000_000);
+      it('should parse "2 triliun" as 2000000000000', () => {
+        expect(converter.parseMoneyText('2 triliun')).toBe(2 * 1_000_000_000_000);
       });
 
       it('should parse "100 juta" as 100000000', () => {
@@ -99,9 +99,9 @@ describe('MBGConverter', () => {
     });
 
     describe('Decimal dots with MBG units', () => {
-      it('should parse "1.2 triliun" as 1440000000000', () => {
+      it('should parse "1.2 triliun" as 1200000000000', () => {
         // Dot is decimal for MBG units (when parsed via word format)
-        expect(converter.parseMoneyText('1.2 triliun')).toBe(1.2 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('1.2 triliun')).toBe(1_200_000_000_000);
       });
 
       it('should parse "0.5 juta" with dot as decimal', () => {
@@ -123,7 +123,7 @@ describe('MBGConverter', () => {
       });
 
       it('should parse "3,14 triliun" - comma as decimal (Indonesian format)', () => {
-        expect(converter.parseMoneyText('3,14 triliun')).toBe(3.14 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('3,14 triliun')).toBe(3.14 * 1_000_000_000_000);
       });
     });
 
@@ -160,8 +160,8 @@ describe('MBGConverter', () => {
         expect(converter.parseMoneyText('Rp 200 ribu')).toBe(200_000);
       });
 
-      it('should parse "Rp500 triliun" as 600000000000000', () => {
-        expect(converter.parseMoneyText('Rp500 triliun')).toBe(500 * 1_200_000_000_000);
+      it('should parse "Rp500 triliun" as 500000000000000', () => {
+        expect(converter.parseMoneyText('Rp500 triliun')).toBe(500 * 1_000_000_000_000);
       });
 
       it('should parse "Rp 10.5 miliar" - dot treated as thousand separator in Rp format', () => {
@@ -172,15 +172,15 @@ describe('MBGConverter', () => {
 
     describe('Single-letter abbreviations', () => {
       it('should parse "1,2 t" as 1.2 triliun (Indonesian format)', () => {
-        expect(converter.parseMoneyText('1,2 t')).toBe(1.2 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('1,2 t')).toBe(1_200_000_000_000);
       });
 
       it('should parse "1.2 t" as 1.2 triliun (English format)', () => {
-        expect(converter.parseMoneyText('1.2 t')).toBe(1.2 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('1.2 t')).toBe(1_200_000_000_000);
       });
 
       it('should parse "1,2 T" (uppercase) as 1.2 triliun', () => {
-        expect(converter.parseMoneyText('1,2 T')).toBe(1.2 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('1,2 T')).toBe(1_200_000_000_000);
       });
 
       it('should parse "500 m" as 500 miliar', () => {
@@ -217,8 +217,8 @@ describe('MBGConverter', () => {
         expect(converter.parseMoneyText('500 RIBU')).toBe(500_000);
       });
 
-      it('should parse "2 TRILIUN" as 2400000000000', () => {
-        expect(converter.parseMoneyText('2 TRILIUN')).toBe(2 * 1_200_000_000_000);
+      it('should parse "2 TRILIUN" as 2000000000000', () => {
+        expect(converter.parseMoneyText('2 TRILIUN')).toBe(2 * 1_000_000_000_000);
       });
 
       it('should parse "rp 100 juta" as 100000000', () => {
@@ -236,8 +236,8 @@ describe('MBGConverter', () => {
       });
 
       it('should parse "triliun" variations case insensitively', () => {
-        expect(converter.parseMoneyText('10 Triliun')).toBe(10 * 1_200_000_000_000);
-        expect(converter.parseMoneyText('10 tRiLiUn')).toBe(10 * 1_200_000_000_000);
+        expect(converter.parseMoneyText('10 Triliun')).toBe(10 * 1_000_000_000_000);
+        expect(converter.parseMoneyText('10 tRiLiUn')).toBe(10 * 1_000_000_000_000);
       });
     });
   });
@@ -298,12 +298,12 @@ describe('MBGConverter', () => {
     });
 
     it('should parse very large "1000 triliun"', () => {
-      expect(converter.parseMoneyText('1000 triliun')).toBe(1000 * 1_200_000_000_000);
+      expect(converter.parseMoneyText('1000 triliun')).toBe(1000 * 1_000_000_000_000);
     });
 
     it('should parse "1,5 triliun" with comma as decimal (Indonesian format)', () => {
       // Indonesian: "1,5" = 1.5 (comma is decimal)
-      expect(converter.parseMoneyText('1,5 triliun')).toBe(1.5 * 1_200_000_000_000);
+      expect(converter.parseMoneyText('1,5 triliun')).toBe(1.5 * 1_000_000_000_000);
     });
 
     it('should parse "Rp   100.000" with multiple spaces', () => {
@@ -370,7 +370,7 @@ describe('MBGConverter', () => {
     it('should find triliun patterns', () => {
       const result = converter.findMoneyPatterns('Anggaran 1.5 triliun');
       expect(result.length).toBeGreaterThanOrEqual(1);
-      expect(result[0].amount).toBe(1.5 * 1_200_000_000_000);
+      expect(result[0].amount).toBe(1.5 * 1_000_000_000_000);
     });
 
     it('should not find patterns with suffix (an) - implementation limitation', () => {
@@ -426,7 +426,7 @@ describe('MBGConverter', () => {
 
   describe('convertToMBG', () => {
     it('should convert 1.2 triliun to 1 hari MBG', () => {
-      const amount = 1.2 * 1_200_000_000_000;
+      const amount = 1_200_000_000_000;
       const result = converter.convertToMBG(amount);
       expect(result.amount).toBe(amount);
       expect(result.perHari).toBe(1);
@@ -435,21 +435,21 @@ describe('MBGConverter', () => {
       expect(result.perJam).toBe(24);
     });
 
-    it('should convert 2.4 triliun to 2 hari MBG', () => {
-      const amount = 2.4 * 1_200_000_000_000;
+    it('should convert 2.4 triliun rupiah to 2 hari MBG', () => {
+      const amount = 2_400_000_000_000;
       const result = converter.convertToMBG(amount);
       expect(result.perHari).toBe(2);
     });
 
-    it('should convert 720 miliar to 0.5 hari MBG', () => {
-      // 720 miliar = 0.6 triliun = 0.6 / 1.2 hari = 0.5 hari
-      const amount = 720_000_000_000;
+    it('should convert 600 miliar to 0.5 hari MBG', () => {
+      // 600 miliar / 1.2 triliun rupiah per hari = 0.5 hari
+      const amount = 600_000_000_000;
       const result = converter.convertToMBG(amount);
       expect(result.perHari).toBe(0.5);
     });
 
     it('should convert amount to all time units', () => {
-      const amount = 1.2 * 1_200_000_000_000; // 1 hari MBG
+      const amount = 1_200_000_000_000; // 1 hari MBG
       const result = converter.convertToMBG(amount);
 
       expect(result).toHaveProperty('amount');
@@ -463,7 +463,7 @@ describe('MBGConverter', () => {
     });
 
     it('should calculate correct ratios', () => {
-      const amount = 1.2 * 1_200_000_000_000; // 1 hari MBG
+      const amount = 1_200_000_000_000; // 1 hari MBG
       const result = converter.convertToMBG(amount);
 
       expect(result.perMenit).toBe(result.perJam * 60);
@@ -474,7 +474,7 @@ describe('MBGConverter', () => {
     });
 
     it('should handle very large amounts', () => {
-      const amount = 1200 * 1_200_000_000_000; // 1000 hari MBG
+      const amount = 1000 * 1_200_000_000_000; // 1000 hari MBG
       const result = converter.convertToMBG(amount);
       expect(result.perHari).toBe(1000);
       expect(result.perTahun).toBeCloseTo(1000 / 365, 4);
@@ -483,35 +483,33 @@ describe('MBGConverter', () => {
     it('should handle very small amounts', () => {
       const amount = 1_000_000; // 1 juta = very small in MBG
       const result = converter.convertToMBG(amount);
-      // 1 juta / 1.2 triliun = 0.000833... hari (but divided by 1.2 factor)
-      // 1 juta / (1.2 * 1.2 triliun) = 1 juta / 1.44 triliun = 1/1440000 hari
-      expect(result.perHari).toBeCloseTo(6.944444444444445e-7, 10);
+      // 1 juta / 1.2 x 10^12 rupiah per hari
+      expect(result.perHari).toBeCloseTo(8.333333333333333e-7, 10);
     });
 
     it('should convert 1 juta correctly', () => {
       const amount = 1_000_000;
       const result = converter.convertToMBG(amount);
-      // 1 juta / 1.2 triliun / 1.2 hari per triliun = 1 juta / 1.44 triliun hari
-      expect(result.perHari).toBeCloseTo(1_000_000 / (1.2 * 1_200_000_000_000 / 1), 10);
+      expect(result.perHari).toBeCloseTo(1_000_000 / 1_200_000_000_000, 10);
     });
 
-    it('should convert 1 triliun correctly', () => {
-      const amount = 1_200_000_000_000;
+    it('should convert 1 triliun rupiah (10^12) to a fraction of one hari MBG', () => {
+      const amount = 1_000_000_000_000;
       const result = converter.convertToMBG(amount);
-      expect(result.perHari).toBeCloseTo(1/1.2, 10);
+      expect(result.perHari).toBeCloseTo(1 / 1.2, 10);
     });
   });
 
   describe('formatMBG', () => {
     it('should format 1 hari as "1 Hari"', () => {
-      const conversion = converter.convertToMBG(1.2 * 1_200_000_000_000);
+      const conversion = converter.convertToMBG(1_200_000_000_000);
       const result = converter.formatMBG(conversion);
       expect(result).toContain('1 Hari');
     });
 
     it('should format multiple units for large amounts', () => {
       // 365 hari = 1 Tahun
-      const amount = 365 * 1.2 * 1_200_000_000_000;
+      const amount = 365 * 1_200_000_000_000;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       expect(result).toContain('Tahun');
@@ -527,14 +525,14 @@ describe('MBGConverter', () => {
 
     it('should format hours and minutes', () => {
       // 1.5 hours = 90 minutes
-      const amount = 1.5 * 1.2 * 1_200_000_000_000 / 24;
+      const amount = 1.5 * 1_200_000_000_000 / 24;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       expect(result.length).toBeGreaterThan(0);
     });
 
     it('should handle integer values correctly', () => {
-      const conversion = converter.convertToMBG(1.2 * 1_200_000_000_000);
+      const conversion = converter.convertToMBG(1_200_000_000_000);
       const result = converter.formatMBG(conversion);
       // Should show "1 Hari" not "1.00 Hari"
       expect(result).toMatch(/\b1 Hari\b/);
@@ -542,7 +540,7 @@ describe('MBGConverter', () => {
 
     it('should handle decimal values with 2 decimal places', () => {
       // Amount that results in decimal hours
-      const amount = 1.2 * 1_200_000_000_000 / 24; // 1 jam
+      const amount = 1_200_000_000_000 / 24; // 1 jam
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       expect(result.length).toBeGreaterThan(0);
@@ -550,7 +548,7 @@ describe('MBGConverter', () => {
 
     it('should combine multiple units', () => {
       // Amount that spans years and months
-      const amount = 400 * 1.2 * 1_200_000_000_000; // 400 hari > 1 year
+      const amount = 400 * 1_200_000_000_000; // 400 hari > 1 year
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       // Should have at least years
@@ -559,7 +557,7 @@ describe('MBGConverter', () => {
 
     it('should break down time into appropriate units', () => {
       // 2.5 hari should be formatted
-      const amount = 2.5 * 1.2 * 1_200_000_000_000;
+      const amount = 2.5 * 1_200_000_000_000;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       // Will include Hari and possibly smaller units
@@ -567,14 +565,14 @@ describe('MBGConverter', () => {
     });
 
     it('should format using Indonesian locale', () => {
-      const conversion = converter.convertToMBG(2.5 * 1.2 * 1_200_000_000_000);
+      const conversion = converter.convertToMBG(2.5 * 1_200_000_000_000);
       const result = converter.formatMBG(conversion);
       // Should contain Indonesian unit names
       expect(result).toMatch(/Hari|Jam|Menit|Detik/);
     });
 
     it('should format very large amounts with years', () => {
-      const amount = 10000 * 1.2 * 1_200_000_000_000;
+      const amount = 10000 * 1_200_000_000_000;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       expect(result).toContain('Tahun');
@@ -662,7 +660,7 @@ describe('MBGConverter', () => {
 
     it('should handle very large conversions with many units', () => {
       // 10000 hari - multiple units
-      const amount = 10000 * 1.2 * 1_200_000_000_000;
+      const amount = 10000 * 1_200_000_000_000;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
 
@@ -671,14 +669,14 @@ describe('MBGConverter', () => {
     });
 
     it('should handle exactly 1 hari MBG', () => {
-      const conversion = converter.convertToMBG(1.2 * 1_200_000_000_000);
+      const conversion = converter.convertToMBG(1_200_000_000_000);
       const result = converter.formatMBG(conversion);
       // formatMBG returns all units with value >= 1
       expect(result).toBe('1 Hari, 24 Jam, 1.440 Menit, 86.400 Detik');
     });
 
     it('should handle 0.5 hari MBG', () => {
-      const amount = 0.5 * 1.2 * 1_200_000_000_000;
+      const amount = 0.5 * 1_200_000_000_000;
       const conversion = converter.convertToMBG(amount);
       const result = converter.formatMBG(conversion);
       expect(result).toContain('Jam');

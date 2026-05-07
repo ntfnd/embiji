@@ -39,6 +39,30 @@ export class ContentViewModel {
         logger.debug('ContentViewModel created')
     }
 
+    /**
+     * Skip MBG inside typing surfaces: native fields, contenteditable trees (Notion, Gmail),
+     * and ARIA textbox containers. Uses isContentEditable so nested spans inside editors match.
+     */
+    private isTextNodeInsideExcludedFormField(textNode: Text): boolean {
+        let el: Element | null = textNode.parentElement
+        while (el !== null) {
+            const tagName: string = el.tagName
+            if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+                return true
+            }
+            if (el instanceof HTMLElement) {
+                if (el.isContentEditable) {
+                    return true
+                }
+            }
+            const roleAttr: string | null = el.getAttribute('role')
+            if (roleAttr === 'textbox') {
+                return true
+            }
+            el = el.parentElement
+        }
+        return false
+    }
 
     private async loadSettings(): Promise<void> {
         try {
@@ -170,7 +194,7 @@ export class ContentViewModel {
                         return NodeFilter.FILTER_REJECT
                     }
 
-                    if (node.parentElement?.closest('input, select, textarea')) {
+                    if (this.isTextNodeInsideExcludedFormField(node as Text)) {
                         return NodeFilter.FILTER_REJECT
                     }
                     const text = node.textContent || ''
@@ -211,6 +235,9 @@ export class ContentViewModel {
 
 
     private processTextNode(textNode: Text): void {
+        if (this.isTextNodeInsideExcludedFormField(textNode)) {
+            return
+        }
         const text = textNode.textContent || ''
         const matches = this.mbgConverter.findMoneyPatterns(text)
 
@@ -256,11 +283,11 @@ export class ContentViewModel {
 
             wrapper.addEventListener('click', (e) => {
                 if (isInsideClickable) {
-                    this.showMBGPopover(wrapper, match.amount)
+                    this.showMBGPopover(wrapper, match.amount, match.originalText)
                 } else {
                     e.preventDefault()
                     e.stopPropagation()
-                    this.showMBGPopover(wrapper, match.amount)
+                    this.showMBGPopover(wrapper, match.amount, match.originalText)
                 }
             })
 
@@ -332,16 +359,24 @@ export class ContentViewModel {
         return `${value} ${TimeUnit.DETIK} MBG`
     }
 
-    private showMBGPopover(element: HTMLElement, amount: number): void {
+    private showMBGPopover(element: HTMLElement, amount: number, originalText: string): void {
         const existing = document.querySelector('.mbg-popover')
         if (existing) {
             existing.remove()
         }
 
-        this.createMBGPopover(element, amount)
+        this.createMBGPopover(element, amount, originalText)
     }
 
-    private createMBGPopover(target: HTMLElement, amount: number): void {
+    private popoverPriceTitle(originalText: string, amount: number): string {
+        const trimmed: string = originalText.trim()
+        if (trimmed.length === 0) {
+            return `Rp ${amount.toLocaleString('id-ID')}`
+        }
+        return trimmed
+    }
+
+    private createMBGPopover(target: HTMLElement, amount: number, originalText: string): void {
         const conversion = this.mbgConverter.convertToMBG(amount)
 
         const popover = document.createElement('div')
@@ -352,7 +387,7 @@ export class ContentViewModel {
 
         const title = document.createElement('div')
         title.className = 'mbg-popover-title'
-        title.textContent = `Rp ${amount.toLocaleString('id-ID')}`
+        title.textContent = this.popoverPriceTitle(originalText, amount)
 
         const closeBtn = document.createElement('button')
         closeBtn.className = 'mbg-popover-close'
@@ -421,13 +456,26 @@ export class ContentViewModel {
     }
 
     private formatMBGValue(value: number, label: string): string {
-        if (label === 'Per Detik' && value < 1) {
-            return value.toFixed(4)
+        const perDetikUnderOne: boolean = label === 'Per Detik' && value < 1
+        if (perDetikUnderOne) {
+            const formattedFour: string = value.toFixed(4).replace('.', ',')
+            if (formattedFour === '0,0000') {
+                return '-'
+            }
+            return formattedFour
         }
         if (Number.isInteger(value)) {
-            return value.toLocaleString('id-ID')
+            const formattedInt: string = value.toLocaleString('id-ID')
+            if (formattedInt === '0') {
+                return '-'
+            }
+            return formattedInt
         }
-        return value.toFixed(2).replace('.', ',')
+        const formattedTwo: string = value.toFixed(2).replace('.', ',')
+        if (formattedTwo === '0,00') {
+            return '-'
+        }
+        return formattedTwo
     }
 
     private positionMBGPopover(target: HTMLElement, popover: HTMLElement): void {

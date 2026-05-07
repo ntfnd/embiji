@@ -22,17 +22,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.tokopedia.com/*",
-        "*://*.shopee.co.id/*",
-        "*://*.bukalapak.com/*",
-        "*://*.blibli.com/*",
-        "*://*.lazada.co.id/*",
-        "*://*.amazon.co.id/*",
-        "*://*.jd.id/*",
-        "*://*.tiktok.com/*",
-        "*://*.zalora.co.id/*",
-        "*://*.facebook.com/*",
-        "*://*.instagram.com/*"
+        "<all_urls>"
       ],
       "js": ["dist/content.js"],
       "run_at": "document_idle"
