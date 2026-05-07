@@ -1,11 +1,3 @@
-/**
- * MODEL: DOM Observer Service
- *
- * NOTE: Service that wraps the MutationObserver API for observing DOM changes.
- * NOTE: Notifies a callback when mutations occur, with debouncing to prevent
- * NOTE: excessive calls during rapid DOM changes.
- */
-
 import type { ObserverConfig } from '../types'
 import { logger } from '../../shared/utils/logger'
 
@@ -26,9 +18,6 @@ export class DomObserver {
         logger.debug('DomObserver created')
     }
 
-    /**
-   * MODEL: Start observing the document body for mutations
-   */
     start(): void {
         if (this.observer) {
             logger.warn('DomObserver already running')
@@ -48,31 +37,19 @@ export class DomObserver {
         logger.debug('DomObserver started')
     }
 
-    /**
-   * MODEL: Stop observing for mutations
-   */
     stop(): void {
         this.observer && (this.observer.disconnect(), this.observer = null, logger.debug('DomObserver stopped'))
         this.debounceTimer && (clearTimeout(this.debounceTimer), this.debounceTimer = null)
     }
 
-    /**
-   * MODEL: Check if the observer is currently running
-   */
     isRunning(): boolean {
         return this.observer !== null
     }
 
-    /**
-   * MODEL: Get the observer configuration
-   */
     getConfig(): ObserverConfig {
         return { ...this.config }
     }
 
-    /**
-   * MODEL: Handle mutation events with debouncing
-   */
     private onMutation(): void {
         this.debounceTimer && clearTimeout(this.debounceTimer)
 
@@ -87,9 +64,6 @@ export class DomObserver {
         }, this.debounceDelay)
     }
 
-    /**
-   * MODEL: Destroy the observer and clean up
-   */
     destroy(): void {
         this.stop()
         logger.debug('DomObserver destroyed')

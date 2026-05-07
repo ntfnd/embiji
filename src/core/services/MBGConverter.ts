@@ -1,24 +1,9 @@
-/**
- * MODEL: MBG Converter Service
- *
- * NOTE: Converts money amounts to MBG (Makan Bergizi Gratis) time units.
- * NOTE: 1.2 Triliun = 1 Hari MBG.
- */
-
-// import { logger } from '../../shared/utils/logger'; // Unused import removed
 import { NumberWord, NumberValue, MoneyMultiplier, TimeUnit } from '../../common/constants'
 
-/**
- * MBG Converter configuration
- */
 export interface MBGConverterConfig {
-    /** Only detect money with "Rp" prefix (Rp, RP, rp with/without dots and spaces) */
     requireRpPrefix?: boolean;
 }
 
-/**
- * Money amount with metadata
- */
 export interface MoneyMatch {
     amount: number;
     originalText: string;
@@ -26,9 +11,6 @@ export interface MoneyMatch {
     endIndex: number;
 }
 
-/**
- * MBG conversion result
- */
 export interface MBGConversion {
     amount: number;
     perDetik: number;
@@ -40,12 +22,7 @@ export interface MBGConversion {
     perTahun: number;
 }
 
-/**
- * MODEL: MBG Converter Service
- * Converts Indonesian money formats to MBG time units
- */
 export class MBGConverter {
-    // NOTE: 1.2 Triliun = 1 Hari MBG
     private readonly TRILIUN_PER_HARI_MBG = 1.2
     private readonly TRILIUN_IN_RUPIAH = 1_200_000_000_000
     private readonly config: MBGConverterConfig
@@ -57,16 +34,10 @@ export class MBGConverter {
         }
     }
 
-    /**
-   * MODEL: Get current config
-   */
     getConfig(): MBGConverterConfig {
         return { ...this.config }
     }
 
-    /**
-   * MODEL: Parse Indonesian money text to amount
-   */
     parseMoneyText(text: string): number | null {
         const cleaned = text.toLowerCase().replace(/\s/g, '')
 
@@ -85,9 +56,6 @@ export class MBGConverter {
         return this.getMultiplier(cleaned) * parsed
     }
 
-    /**
-   * MODEL: Parse word format (juta, miliar, triliun, etc.) with abbreviations (j, m, t)
-   */
     private parseWordFormat(cleaned: string): number | null {
         const wordMatch = cleaned.match(/^([\d.,]+)\s*(satudua|tiga|empat|lima|enam|tujuh|delapan|sembilan|puluh|ratus|r|ribu|j|juta|m|miliar|t|triliun)$/)
         if (wordMatch) {
@@ -101,9 +69,6 @@ export class MBGConverter {
         return null
     }
 
-    /**
-   * MODEL: Get multiplier based on unit in text (supports abbreviations: t, m, j, r)
-   */
     private getMultiplier(text: string): number {
         const normalized = text.toLowerCase()
         switch (true) {
@@ -120,30 +85,22 @@ export class MBGConverter {
         }
     }
 
-    /**
-   * MODEL: Find all money patterns in text
-   */
     findMoneyPatterns(text: string): MoneyMatch[] {
         const matches: MoneyMatch[] = []
 
-        // Pattern 1: Rp format with dots/commas as thousand separators, with optional word unit
-        // Rp 1.000.000.000, Rp 20,075,000, Rp. 20.075.000, Rp.500.000, Rp175 Triliun, etc.
-        // Also handles trailing punctuation like "Rp23.749.000." or "Rp 100.000,"
         const rpPatterns = [
-            // Match Rp + number + optional word unit + optional trailing punctuation
             /Rp\.?\s*([\d.,]+)(?:\s*(?:j|juta|m|miliar|t|triliun))?(?:([.,;:?!])|\b)/gi,
         ]
 
         for (const pattern of rpPatterns) {
             let match
             while ((match = pattern.exec(text)) !== null) {
-                // Get the matched text without trailing punctuation for parsing
                 const textToParse = match[0].replace(/[.,;:?!]$/, '')
                 const amount = this.parseMoneyText(textToParse)
                 if (amount !== null && amount > 0) {
                     matches.push({
                         amount,
-                        originalText: match[0],  // Include trailing punctuation in display
+                        originalText: match[0],
                         startIndex: match.index,
                         endIndex: match.index + match[0].length
                     })
@@ -151,28 +108,17 @@ export class MBGConverter {
             }
         }
 
-        // Pattern 2: Word format (ribu, juta, miliar, triliun) with abbreviations (r, j, m, t)
-        // Pattern 3: Plain numbers with dots as thousand separators (Indonesian format: 295.000, 1.000.000)
-        // Only process if requireRpPrefix is false
         if (!this.config.requireRpPrefix) {
-            // Important: longer matches must come first in alternation (juta before j)
-            // Handle trailing punctuation like "23 juta." or "100 ribu,"
             const wordPatterns = [
                 /([\d.,]+)\s*(ribu|r|juta|j|miliar|m|triliun|t)(an)?(?:([.,;:?!])|\b)/gi,
-                // Pattern for plain numbers with dots as thousand separators (Indonesian format)
-                // Matches: 295.000, 1.000.000, 12.345.678 but NOT 192.168.1.1 (IP - 4 groups) or single decimals
-                // Max 2-3 groups (ribu to miliar range), each group exactly 3 digits
                 /(\d{1,3}(?:\.\d{3}){1,2})(?!\.\d)/gi,
             ]
 
             for (const pattern of wordPatterns) {
                 let match
                 while ((match = pattern.exec(text)) !== null) {
-                    // Get the matched text without trailing punctuation for parsing
                     let textToParse = match[0].replace(/[.,;:?!]$/, '')
 
-                    // For plain number pattern (no unit), add 'ribu' for parsing
-                    // e.g., "295.000" → parse as "295.000 ribu" = 295000
                     if (!textToParse.match(/ribu|juta|miliar|triliun/i)) {
                         textToParse = textToParse + ' ribu'
                     }
@@ -181,7 +127,7 @@ export class MBGConverter {
                     if (amount !== null && amount > 0) {
                         matches.push({
                             amount,
-                            originalText: match[0],  // Include trailing punctuation in display
+                            originalText: match[0],
                             startIndex: match.index,
                             endIndex: match.index + match[0].length
                         })
@@ -190,17 +136,13 @@ export class MBGConverter {
             }
         }
 
-        // Remove duplicates and sort by position
-        // First sort by startIndex (ascending) and by length descending (prefer longer matches)
         matches.sort((a, b) => {
             if (a.startIndex !== b.startIndex) {
                 return a.startIndex - b.startIndex
             }
-            // Same start position, prefer longer match (e.g., "Rp 100.000" over "100.000")
             return b.endIndex - a.endIndex
         })
 
-        // Filter out matches that are contained within larger matches
         const unique: MoneyMatch[] = []
         for (const match of matches) {
             const isContained = unique.some(existing =>
@@ -214,9 +156,6 @@ export class MBGConverter {
         return unique
     }
 
-    /**
-   * MODEL: Convert amount to MBG time units
-   */
     convertToMBG(amount: number): MBGConversion {
         const triliun = amount / this.TRILIUN_IN_RUPIAH
         const hariMBG = triliun / this.TRILIUN_PER_HARI_MBG
@@ -233,9 +172,6 @@ export class MBGConverter {
         }
     }
 
-    /**
-   * MODEL: Format MBG conversion for display
-   */
     formatMBG(conversion: MBGConversion): string {
         const parts: string[] = []
 
@@ -264,9 +200,6 @@ export class MBGConverter {
         return parts.join(', ')
     }
 
-    /**
-   * MODEL: Format number with Indonesian locale
-   */
     private formatNumber(num: number): string {
         if (Number.isInteger(num)) {
             return num.toLocaleString('id-ID')
@@ -274,21 +207,11 @@ export class MBGConverter {
         return num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     }
 
-    /**
-   * MODEL: Check if text is a number word
-   */
     private isNumberWord(text: string): boolean {
         const numberWords = Object.values(NumberWord)
         return numberWords.some((word) => text.includes(word))
     }
 
-    /**
-   * MODEL: Convert word/number combination to amount
-   * NOTE: Detects Indonesian vs English format automatically
-   * NOTE: Indonesian: "1,2 juta" (comma=decimal), "1.200 juta" (dot=thousand)
-   * NOTE: English: "1.2 juta" (dot=decimal), "1,200 juta" (comma=thousand)
-   * NOTE: For Rupiah only, Indonesian format is standard: dot=thousand, comma=decimal
-   */
     private wordToAmount(numberPart: string, unitPart?: string): number {
         let num = 0
 
@@ -301,24 +224,15 @@ export class MBGConverter {
 
         let parsed: number
         if (hasMBGUnit) {
-            // For MBG units, detect format:
-            // - If comma is last separator: Indonesian format (comma=decimal, dot=thousand)
-            // - If dot is last separator: English format (dot=decimal, comma=thousand)
             const lastCommaIndex = normalized.lastIndexOf(',')
             const lastDotIndex = normalized.lastIndexOf('.')
 
             if (lastCommaIndex > lastDotIndex) {
-                // Indonesian format: "1,2" or "1.200,5"
-                // Remove dots (thousand), replace comma with dot (decimal)
                 parsed = parseFloat(normalized.replace(/\./g, '').replace(/,/g, '.'))
             } else {
-                // English format: "1.2" or "1,200.5"
-                // Remove commas (thousand), keep dots as decimal
                 parsed = parseFloat(normalized.replace(/,/g, ''))
             }
         } else {
-            // For Rupiah only: Indonesian format standard
-            // dot = thousand separator, comma = decimal
             parsed = parseFloat(normalized.replace(/\./g, '').replace(/,/g, '.'))
         }
 
@@ -390,7 +304,4 @@ export class MBGConverter {
     }
 }
 
-/**
- * MODEL: Export singleton instance with default config
- */
 export const mbgConverter = new MBGConverter({ requireRpPrefix: false })

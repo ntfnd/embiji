@@ -1,7 +1,3 @@
-/**
- * Chrome Extension API Type Declarations
- */
-
 interface StorageChange {
     oldValue?: unknown
     newValue?: unknown

@@ -1,15 +1,17 @@
-/**
- * VIEWMODEL: Content View Model
- *
- * NOTE: Converts Indonesian Rupiah money text to MBG (Makan Bergizi Gratis) time units.
- */
-
 import { DomObserver } from '../core/services/DomObserver'
 import { MBGConverter, MBGConverterConfig } from '../core/services/MBGConverter'
 import { TimeUnit } from '../common/constants'
 import { logger, LogLevel } from '../shared/utils/logger'
 
-const DEBUG_MODE = true
+const isProduction = () => {
+    try {
+        return typeof __PROD__ !== 'undefined' && __PROD__ === true
+    } catch {
+        return false
+    }
+}
+
+const DEBUG_MODE = !isProduction()
 
 const STORAGE_KEY = 'mbgSettings'
 
@@ -25,33 +27,29 @@ export class ContentViewModel {
     private initialized = false
     private convertedTextNodes = new Set<Text>()
     private escapeHandlerRegistered = false
-    private enabled = true // Track enabled state
+    private enabled = true
     private storageListener?: ((changes: { [key: string]: StorageChange }) => void)
 
     constructor(observer?: DomObserver, mbgConverter?: MBGConverter) {
         this.observer = observer || new DomObserver(() => this.onMutation())
-        // Default config, will be updated from storage
+
         const defaultConfig: MBGConverterConfig = { requireRpPrefix: false }
         this.mbgConverter = mbgConverter || new MBGConverter(defaultConfig)
         logger.setLevel(LogLevel.INFO)
         logger.debug('ContentViewModel created')
     }
 
-    /**
-   * VIEWMODEL: Load settings from chrome.storage
-   */
+
     private async loadSettings(): Promise<void> {
         try {
             const result = await chrome.storage.local.get(STORAGE_KEY)
             const settings: ExtensionSettings = (result[STORAGE_KEY] || {}) as ExtensionSettings
 
-            // Update enabled state
             if (settings.enabled !== undefined) {
                 this.enabled = settings.enabled
                 logger.info('Extension enabled:', { enabled: this.enabled })
             }
 
-            // Update MBGConverter config if requireRpPrefix changed
             if (settings.requireRpPrefix !== undefined) {
                 const currentConfig = this.mbgConverter.getConfig()
                 if (currentConfig.requireRpPrefix !== settings.requireRpPrefix) {
@@ -73,21 +71,17 @@ export class ContentViewModel {
                 const newSettings = changes[STORAGE_KEY].newValue as ExtensionSettings
                 const oldSettings = changes[STORAGE_KEY].oldValue as ExtensionSettings
 
-                // Check if enabled state changed
                 if (newSettings?.enabled !== undefined && newSettings.enabled !== oldSettings?.enabled) {
                     this.enabled = newSettings.enabled
                     logger.info('Extension enabled state changed:', { enabled: this.enabled })
 
                     if (this.enabled) {
-                        // Re-enable processing
                         this.processMBG()
                     } else {
-                        // Remove all MBG elements
                         this.removeAllMBGElements()
                     }
                 }
 
-                // Check if requireRpPrefix changed
                 if (newSettings?.requireRpPrefix !== undefined && newSettings.requireRpPrefix !== oldSettings?.requireRpPrefix) {
                     this.mbgConverter = new MBGConverter({ requireRpPrefix: newSettings.requireRpPrefix })
                     logger.info('RequireRpPrefix changed:', { requireRpPrefix: newSettings.requireRpPrefix })
@@ -103,29 +97,21 @@ export class ContentViewModel {
         chrome.storage.onChanged.addListener(this.storageListener)
     }
 
-    /**
-   * VIEWMODEL: Remove all MBG elements from the page
-   */
+
     private removeAllMBGElements(): void {
-    // Remove all MBG markers
         const markers = document.querySelectorAll('.mbg-marker')
         markers.forEach(marker => {
             const parent = marker.parentNode
             if (parent) {
-                // Get the original text content
                 const originalText = marker.querySelector('.mbg-original')?.textContent || marker.textContent || ''
-                // Replace with plain text node
                 const textNode = document.createTextNode(originalText)
                 parent.replaceChild(textNode, marker)
-                // Merge adjacent text nodes
                 parent.normalize()
             }
         })
 
-        // Clear converted text nodes tracking
         this.convertedTextNodes.clear()
 
-        // Remove popover if exists
         const popover = document.querySelector('.mbg-popover')
         if (popover) {
             popover.remove()
@@ -134,27 +120,22 @@ export class ContentViewModel {
         logger.debug('Removed all MBG elements')
     }
 
-    /**
-   * VIEWMODEL: Initialize the content script
-   */
+
     async initialize(): Promise<void> {
         if (this.initialized) {
             logger.warn('ContentViewModel already initialized')
             return
         }
 
-        console.log('[MBG DEBUG] ContentViewModel initializing...')
+        logger.debug('[MBG DEBUG] ContentViewModel initializing...')
         logger.info('Initializing ContentViewModel')
 
-        // Load settings from storage
         await this.loadSettings()
 
-        // Setup storage listener for settings changes
         this.setupStorageListener()
 
         this.addMBGStyles()
 
-        // Only process if enabled
         if (this.enabled) {
             this.processMBG()
         } else {
@@ -169,18 +150,13 @@ export class ContentViewModel {
         logger.info('ContentViewModel initialized')
     }
 
-    /**
-   * VIEWMODEL: Process text nodes for MBG conversion
-   * NOTE: Processes text nodes with valid money patterns, including inside buttons/clickable elements
-   * NOTE: Only skips script, style, noscript and already converted elements
-   * NOTE: Only processes if extension is enabled
-   */
+
     private processMBG(): void {
         if (!this.enabled) {
             logger.debug('Extension is disabled, skipping MBG processing')
             return
         }
-        console.log('[MBG DEBUG] processMBG started')
+        logger.debug('[MBG DEBUG] processMBG started')
         const walker = document.createTreeWalker(
             document.body,
             NodeFilter.SHOW_TEXT,
@@ -189,11 +165,11 @@ export class ContentViewModel {
                     if (this.convertedTextNodes.has(node as Text)) {
                         return NodeFilter.FILTER_REJECT
                     }
-                    // Only skip our own elements and non-content elements
+
                     if (node.parentElement?.closest('.mbg-marker, .mbg-inline, .mbg-popover, script, style, noscript')) {
                         return NodeFilter.FILTER_REJECT
                     }
-                    // Still skip input/select/textarea values to avoid breaking form elements
+
                     if (node.parentElement?.closest('input, select, textarea')) {
                         return NodeFilter.FILTER_REJECT
                     }
@@ -201,8 +177,7 @@ export class ContentViewModel {
                     if (text.length < 2) {
                         return NodeFilter.FILTER_REJECT
                     }
-                    // Updated regex to include plain numbers with dots as thousand separators (Indonesian format)
-                    // e.g., "295.000", "1.000.000" which are typical price formats
+
                     const hasMoney = /(?:Rp\s*[\d.,]+|[\d.,]+\s*(juta|miliar|triliun|ribu)|juta|miliar|triliun|\d{1,3}(?:\.\d{3}){1,})/i.test(text)
                     if (hasMoney) {
                         DEBUG_MODE && console.log('[MBG DEBUG] Found potential money text:', text)
@@ -231,12 +206,10 @@ export class ContentViewModel {
         if (nodesToProcess.length > 0) {
             logger.debug(`Processed ${nodesToProcess.length} text nodes for MBG`)
         }
-        console.log('[MBG DEBUG] processMBG completed')
+        logger.debug('[MBG DEBUG] processMBG completed')
     }
 
-    /**
-   * VIEWMODEL: Process single text node
-   */
+
     private processTextNode(textNode: Text): void {
         const text = textNode.textContent || ''
         const matches = this.mbgConverter.findMoneyPatterns(text)
@@ -249,7 +222,6 @@ export class ContentViewModel {
 
         this.convertedTextNodes.add(textNode)
 
-        // Check if this text node is inside a clickable element
         const parentElement = textNode.parentElement
         const isInsideClickable = !!parentElement?.closest('button, a, [role="button"], [data-testid="button"]')
 
@@ -257,7 +229,6 @@ export class ContentViewModel {
         let lastIndex = 0
 
         for (const match of matches) {
-            // Skip matches that overlap with already processed areas
             if (match.startIndex < lastIndex) {
                 DEBUG_MODE && console.log('[MBG DEBUG] Skipping overlapping match:', match.originalText, 'at', match.startIndex, 'last processed:', lastIndex)
                 continue
@@ -267,18 +238,15 @@ export class ContentViewModel {
                 fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.startIndex)))
             }
 
-            // Create wrapper for clickable area (includes both original text and inline MBG)
             const wrapper = document.createElement('span')
             wrapper.className = 'mbg-marker'
             wrapper.dataset.amount = match.amount.toString()
             wrapper.dataset.original = match.originalText
 
-            // Original money text
             const textSpan = document.createElement('span')
             textSpan.className = 'mbg-original'
             textSpan.textContent = match.originalText
 
-            // Inline MBG text
             const conversion = this.mbgConverter.convertToMBG(match.amount)
             const mbgText = this.getInlineMBGText(conversion)
 
@@ -286,20 +254,16 @@ export class ContentViewModel {
             mbgSpan.className = 'mbg-inline'
             mbgSpan.textContent = ` (${mbgText})`
 
-            // Add click handler to wrapper
             wrapper.addEventListener('click', (e) => {
                 if (isInsideClickable) {
-                    // Inside button: show popover but don't prevent button action
                     this.showMBGPopover(wrapper, match.amount)
                 } else {
-                    // Not inside button: show popover and prevent default
                     e.preventDefault()
                     e.stopPropagation()
                     this.showMBGPopover(wrapper, match.amount)
                 }
             })
 
-            // Append both spans to wrapper
             wrapper.appendChild(textSpan)
             wrapper.appendChild(mbgSpan)
 
@@ -314,9 +278,6 @@ export class ContentViewModel {
         textNode.parentNode?.replaceChild(fragment, textNode)
     }
 
-    /**
-   * VIEWMODEL: Get inline MBG text (shortest meaningful unit)
-   */
     private getInlineMBGText(conversion: {
         perDetik: number;
         perMenit: number;
@@ -371,9 +332,6 @@ export class ContentViewModel {
         return `${value} ${TimeUnit.DETIK} MBG`
     }
 
-    /**
-   * VIEWMODEL: Show MBG popover for element
-   */
     private showMBGPopover(element: HTMLElement, amount: number): void {
         const existing = document.querySelector('.mbg-popover')
         if (existing) {
@@ -383,9 +341,6 @@ export class ContentViewModel {
         this.createMBGPopover(element, amount)
     }
 
-    /**
-   * VIEWMODEL: Create and show MBG popover
-   */
     private createMBGPopover(target: HTMLElement, amount: number): void {
         const conversion = this.mbgConverter.convertToMBG(amount)
 
@@ -448,7 +403,6 @@ export class ContentViewModel {
         popover.appendChild(subtitle)
         popover.appendChild(details)
 
-        // Add footer
         const footer = document.createElement('div')
         footer.className = 'mbg-popover-footer'
         footer.innerHTML = `<a href="https://embiji.aksi.dev" target="_blank">embiji.aksi.dev</a> © ${new Date().getFullYear()}`
@@ -466,9 +420,6 @@ export class ContentViewModel {
         logger.debug('MBG Popover shown')
     }
 
-    /**
-   * VIEWMODEL: Format MBG value for display
-   */
     private formatMBGValue(value: number, label: string): string {
         if (label === 'Per Detik' && value < 1) {
             return value.toFixed(4)
@@ -479,9 +430,6 @@ export class ContentViewModel {
         return value.toFixed(2).replace('.', ',')
     }
 
-    /**
-   * VIEWMODEL: Position MBG popover near target
-   */
     private positionMBGPopover(target: HTMLElement, popover: HTMLElement): void {
         const rect = target.getBoundingClientRect()
         const popoverRect = popover.getBoundingClientRect()
@@ -503,9 +451,6 @@ export class ContentViewModel {
         popover.style.left = `${left}px`
     }
 
-    /**
-   * VIEWMODEL: Handle Escape key to close popover
-   */
     private handleEscapeKey = (event: KeyboardEvent): void => {
         if (event.key === 'Escape') {
             const popover = document.querySelector('.mbg-popover')
@@ -515,9 +460,6 @@ export class ContentViewModel {
         }
     }
 
-    /**
-   * VIEWMODEL: Add MBG inline and popover styles
-   */
     private addMBGStyles(): void {
         if (document.getElementById('mbg-popover-styles')) {
             return
@@ -528,43 +470,45 @@ export class ContentViewModel {
         style.textContent = `
       .mbg-marker {
         cursor: pointer;
-        border-bottom: 1.5px solid #FFD700;
-        transition: background 0.2s;
+        text-decoration-line: underline;
+        text-decoration-style: dotted;
+        text-decoration-color: oklch(0.74 0.14 82);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+        transition: background 0.16s ease;
         display: inline;
       }
-
       .mbg-marker:hover {
-        background: rgba(255, 215, 0, 0.15);
+        background: oklch(0.92 0.05 84 / 0.36);
       }
-
       .mbg-original {
         display: inline;
       }
-
       .mbg-inline {
-        color: #667eea;
+        color: oklch(0.48 0.08 248);
         font-weight: bold;
         font-size: 0.9em;
         display: inline;
       }
-
       .mbg-popover {
         position: fixed;
         z-index: 2147483647;
-        background: rgba(0, 32, 96, 0.95);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-radius: 14px;
+        background-color: oklch(0.26 0.028 250 / 0.98);
+        background-image:
+          linear-gradient(145deg, oklch(0.3 0.035 250 / 0.35), transparent 62%),
+          repeating-linear-gradient(45deg, transparent 0 8px, oklch(0.4 0.05 85 / 0.22) 8px 10px);
+        border-radius: 12px;
         padding: 16px;
         min-width: 280px;
         max-width: 400px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 12px 32px oklch(0.1 0.01 250 / 0.34);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        color: white;
+        color: oklch(0.93 0.012 95);
         animation: mbgFadeIn 0.2s ease-out;
-        border: 2px solid #FFD700;
+        border: 1px solid oklch(0.7 0.08 82 / 0.85);
+        outline: 1px dashed oklch(0.74 0.11 84 / 0.55);
+        outline-offset: -6px;
       }
-
       @keyframes mbgFadeIn {
         from {
           opacity: 0;
@@ -575,23 +519,20 @@ export class ContentViewModel {
           transform: translateY(0);
         }
       }
-
       .mbg-popover-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 4px;
       }
-
       .mbg-popover-title {
         font-size: 18px;
         font-weight: bold;
       }
-
       .mbg-popover-close {
         background: transparent;
-        border: none;
-        color: white;
+        border: 1px solid oklch(0.78 0.07 82 / 0.5);
+        color: oklch(0.93 0.01 95);
         font-size: 24px;
         cursor: pointer;
         padding: 0;
@@ -601,58 +542,50 @@ export class ContentViewModel {
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        transition: background 0.2s;
+        transition: background 0.2s ease;
         line-height: 1;
       }
-
       .mbg-popover-close:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: oklch(0.42 0.03 250 / 0.65);
       }
-
       .mbg-popover-subtitle {
         font-size: 14px;
-        opacity: 0.9;
+        color: oklch(0.88 0.03 84);
         margin-bottom: 12px;
         padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        border-bottom: 1px dashed oklch(0.82 0.06 84 / 0.45);
       }
-
       .mbg-popover-details {
         display: flex;
         flex-direction: column;
         gap: 6px;
       }
-
       .mbg-popover-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 13px;
       }
-
       .mbg-popover-label {
-        opacity: 0.8;
+        color: oklch(0.86 0.01 245);
       }
-
       .mbg-popover-value {
         font-weight: bold;
         font-size: 14px;
+        color: oklch(0.91 0.03 85);
       }
-
       .mbg-popover-footer {
         margin-top: 12px;
         padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-top: 1px dashed oklch(0.82 0.06 84 / 0.45);
         text-align: center;
         font-size: 11px;
-        opacity: 0.7;
+        color: oklch(0.78 0.01 245);
       }
-
       .mbg-popover-footer a {
-        color: #FFD700;
+        color: oklch(0.87 0.1 82);
         text-decoration: none;
       }
-
       .mbg-popover-footer a:hover {
         text-decoration: underline;
       }
@@ -661,21 +594,14 @@ export class ContentViewModel {
         document.head.appendChild(style)
     }
 
-    /**
-   * VIEWMODEL: Handle mutation events
-   */
     private onMutation(): void {
         logger.debug('DOM mutation detected, processing MBG')
         this.processMBG()
     }
 
-    /**
-   * VIEWMODEL: Destroy the view model and clean up
-   */
     destroy(): void {
         this.observer.stop()
 
-        // Remove storage listener
         if (this.storageListener) {
             chrome.storage.onChanged.removeListener(this.storageListener)
         }
@@ -689,15 +615,7 @@ export class ContentViewModel {
         logger.debug('ContentViewModel destroyed')
     }
 
-    /**
-   * VIEWMODEL: Check if the view model is initialized
-   */
     isInitialized(): boolean {
         return this.initialized
     }
 }
-
-/**
- * embiji.aksi.dev
- * Copyright © 2026
- */

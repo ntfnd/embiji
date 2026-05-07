@@ -1,42 +1,37 @@
-/**
- * UTIL: Logger Utility
- *
- * NOTE: Provides a simple logging utility with level-based filtering
- * NOTE: and history tracking for debugging.
- */
-
 import type { LogEntry } from '../../core/types'
 import { LogLevel } from '../../core/types'
 
-/**
- * UTIL: Re-export LogLevel enum for convenience
- */
-export { LogLevel }
 
-/**
- * UTIL: Interface for logger instance
- */
-interface ILogger {
-    debug(message: string, context?: Record<string, unknown>): void;
-    info(message: string, context?: Record<string, unknown>): void;
-    warn(message: string, context?: Record<string, unknown>): void;
-    error(message: string, context?: Record<string, unknown>): void;
-    setLevel(level: LogLevel): void;
-    getLevel(): LogLevel;
-    getHistory(): LogEntry[];
-    clear(): void;
-    createScoped(scope: string): ILogger;
+const isProduction = () => {
+    try {
+        return typeof __PROD__ !== 'undefined' && __PROD__ === true
+    } catch {
+        return false
+    }
 }
 
-/**
- * UTIL: Logger class implementation
- */
+
+export { LogLevel }
+
+
+interface ILogger {
+    debug(message: string, context?: Record<string, unknown>): void
+    info(message: string, context?: Record<string, unknown>): void
+    warn(message: string, context?: Record<string, unknown>): void
+    error(message: string, context?: Record<string, unknown>): void
+    setLevel(level: LogLevel): void
+    getLevel(): LogLevel
+    getHistory(): LogEntry[]
+    clear(): void
+    createScoped(scope: string): ILogger
+}
+
 class Logger implements ILogger {
-    // NOTE: Default level is INFO
     private currentLevel: LogLevel = 1 as LogLevel
     private history: LogEntry[] = []
     private maxHistorySize = 1000
     private scope: string | null = null
+    private isProd = isProduction()
 
     constructor(scope?: string) {
         if (scope) {
@@ -44,74 +39,62 @@ class Logger implements ILogger {
         }
     }
 
-    /**
-   * UTIL: Log a debug message
-   */
+
     debug(message: string, context?: Record<string, unknown>): void {
-        this.log(LogLevel.DEBUG, message, context)
+        if (!this.isProd) {
+            this.log(LogLevel.DEBUG, message, context)
+        }
     }
 
-    /**
-   * UTIL: Log an info message
-   */
+
     info(message: string, context?: Record<string, unknown>): void {
-        this.log(LogLevel.INFO, message, context)
+        if (!this.isProd) {
+            this.log(LogLevel.INFO, message, context)
+        }
     }
 
-    /**
-   * UTIL: Log a warning message
-   */
+
     warn(message: string, context?: Record<string, unknown>): void {
-        this.log(LogLevel.WARN, message, context)
+        if (!this.isProd) {
+            this.log(LogLevel.WARN, message, context)
+        }
     }
 
-    /**
-   * UTIL: Log an error message
-   */
+
     error(message: string, context?: Record<string, unknown>): void {
-        this.log(LogLevel.ERROR, message, context)
+        if (!this.isProd) {
+            this.log(LogLevel.ERROR, message, context)
+        }
     }
 
-    /**
-   * UTIL: Set the minimum log level
-   */
+
     setLevel(level: LogLevel): void {
         this.currentLevel = level
     }
 
-    /**
-   * UTIL: Get the current log level
-   */
+
     getLevel(): LogLevel {
         return this.currentLevel
     }
 
-    /**
-   * UTIL: Get the log history
-   */
+
     getHistory(): LogEntry[] {
         return [...this.history]
     }
 
-    /**
-   * UTIL: Clear the log history
-   */
+
     clear(): void {
         this.history = []
     }
 
-    /**
-   * UTIL: Create a new logger with a scope prefix
-   */
+
     createScoped(scope: string): ILogger {
         const scopedLogger = new Logger(scope)
         scopedLogger.setLevel(this.currentLevel)
         return scopedLogger
     }
 
-    /**
-   * UTIL: Internal logging method
-   */
+
     private log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
         if (level < this.currentLevel) {
             return
@@ -127,9 +110,7 @@ class Logger implements ILogger {
         this.outputToConsole(entry)
     }
 
-    /**
-   * UTIL: Output log entry to console
-   */
+
     private outputToConsole(entry: LogEntry): void {
         const levelName = LogLevel[entry.level]
         const timestamp = new Date(entry.timestamp).toISOString()
@@ -153,14 +134,10 @@ class Logger implements ILogger {
     }
 }
 
-/**
- * UTIL: Default logger instance
- */
+
 export const logger = new Logger()
 
-/**
- * UTIL: Create a new scoped logger
- */
+
 export function createLogger(scope: string): ILogger {
     return logger.createScoped(scope)
 }

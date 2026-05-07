@@ -1,6 +1,3 @@
-/**
- * COMMON: Money unit multipliers enum
- */
 export enum MoneyMultiplier {
     RIBU = 1_000,
     RIBUAN = 1_001, // Different value to avoid duplicate

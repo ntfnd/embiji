@@ -1,6 +1,3 @@
-/**
- * COMMON: Number word values enum
- */
 export enum NumberValue {
     SATU = 1,
     DUA = 2,

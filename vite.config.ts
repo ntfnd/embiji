@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import { copyFileSync, existsSync, readFileSync, writeFileSync, cpSync, mkdirSync } from 'fs';
+import { defineConfig } from 'vite'
+import { resolve } from 'path'
+import { copyFileSync, existsSync, readFileSync, writeFileSync, cpSync, mkdirSync } from 'fs'
 
 export default defineConfig({
   build: {
@@ -21,43 +21,47 @@ export default defineConfig({
       }
     }
   },
+  define: {
+    __PROD__: 'true',
+    __DEV__: 'false'
+  },
   plugins: [
     {
       name: 'copy-assets',
       closeBundle() {
         // Copy popup.html to dist/
-        const srcHtml = resolve(__dirname, 'src/views/popup/popup.html');
-        const destHtml = resolve(__dirname, 'dist/popup.html');
+        const srcHtml = resolve(__dirname, 'src/views/popup/popup.html')
+        const destHtml = resolve(__dirname, 'dist/popup.html')
 
         if (existsSync(srcHtml)) {
-          copyFileSync(srcHtml, destHtml);
+          copyFileSync(srcHtml, destHtml)
         }
 
         // Copy assets folder to dist/
-        const assetsSrc = resolve(__dirname, 'assets');
-        const assetsDest = resolve(__dirname, 'dist/assets');
+        const assetsSrc = resolve(__dirname, 'assets')
+        const assetsDest = resolve(__dirname, 'dist/assets')
 
         if (existsSync(assetsSrc)) {
-          mkdirSync(assetsDest, { recursive: true });
-          cpSync(assetsSrc, assetsDest, { recursive: true });
+          mkdirSync(assetsDest, { recursive: true })
+          cpSync(assetsSrc, assetsDest, { recursive: true })
         }
 
         // Copy and update manifest.json to dist/
-        const srcManifest = resolve(__dirname, 'manifest.json');
-        const destManifest = resolve(__dirname, 'dist/manifest.json');
+        const srcManifest = resolve(__dirname, 'manifest.json')
+        const destManifest = resolve(__dirname, 'dist/manifest.json')
 
         if (existsSync(srcManifest)) {
-          const manifestContent = readFileSync(srcManifest, 'utf-8');
-          const manifest = JSON.parse(manifestContent);
+          const manifestContent = readFileSync(srcManifest, 'utf-8')
+          const manifest = JSON.parse(manifestContent)
 
           // Update paths to be relative to dist/
-          manifest.action.default_popup = 'popup.html';
-          manifest.content_scripts[0].js = ['content.js'];
-          manifest.background.service_worker = 'background.js';
+          manifest.action.default_popup = 'popup.html'
+          manifest.content_scripts[0].js = ['content.js']
+          manifest.background.service_worker = 'background.js'
 
-          writeFileSync(destManifest, JSON.stringify(manifest, null, 2));
+          writeFileSync(destManifest, JSON.stringify(manifest, null, 2))
         }
       }
     }
   ]
-});
+})
